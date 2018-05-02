@@ -1,0 +1,52 @@
+pipeline{
+    agent any
+    tools {
+        //add installers from global tool configuration
+        nodejs 'node js 9.11.1'
+
+    }
+
+    stages{
+        stage('checkout'){
+            steps{
+                //checkout source from git or bitbucket
+                checkout([
+                $class: 'GitSCM', 
+                branches: [[name: '*/master']], 
+                doGenerateSubmoduleConfigurations: false, 
+                extensions: [], 
+                submoduleCfg: [], 
+                userRemoteConfigs: [[
+                        credentialsId: '8deee5ae-7ee9-4c93-8de3-6bef4a37fb8f', 
+                        url: 'ssh://git@bitbucket.org/groupname/repo.git']]])
+
+            }
+
+        }
+        stage('build'){
+            steps{
+                sh 'npm --version'
+                sh 'yarn --version'
+                sh 'yarn install'
+                sh 'yarn run build'
+
+            }
+
+        }
+
+        stage('docker image'){
+            steps{
+                script{
+                    //tool name: 'Docker', type: 'org.jenkinsci.plugins.docker.commons.tools.DockerTool'
+                    //add docker env variable to run docker commands
+                    def docHome = tool 'Docker'
+                    env.PATH = "${docHome}/bin:${env.PATH}"
+                    docker.build("testbuild")
+
+                }
+                //sh 'docker -v'
+
+                }
+            }
+        }
+    }
