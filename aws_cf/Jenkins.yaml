@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
+Description: 'create a stack with EC2 with EBS volume and Securitygroups with Jenkins insatlled in port 8080'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -24,13 +25,17 @@ Parameters:
   InstanceName:
     Type: String
     Default: JenkinsMaster
+    Description: Name of the instance
   InstanceTypeParameter:
     Type: String
     Default: t2.large
     AllowedValues:
+      - t2.small
+      - t2.medium
       - t2.large
+      - m1.medium
       - m4.large
-    Description: Enter t2.large, m4.large. t2.large is default.
+    Description: Type of instance to be created
   SSHKey:
     Description: Amazon EC2 Key Pair
     Type: "AWS::EC2::KeyPair::KeyName"
@@ -38,7 +43,7 @@ Parameters:
     Description: Select a Subnet
     Type: "AWS::EC2::Subnet::Id"
   VPC:
-    Description: Select a VPC
+    Description: Select a VPC associated with the subnet
     Type: "AWS::EC2::VPC::Id"
   VolumeType:
     Description: EBS volume type
@@ -61,13 +66,13 @@ Parameters:
     MinValue: 0
     MaxValue: 20000
   Role:
-    Description: Enter a role that has permission to S3
+    Description: Enter IAM role that has permission to S3
     Type: String
     Default: Jenkins
 
 
 Mappings:
-  AmazonLinuxAMI2017030:
+  AmazonLinuxAMI:
     ap-southeast-1:
       ami: ami-d6e1c584
     ap-southeast-2:
@@ -83,7 +88,7 @@ Resources:
       IamInstanceProfile: !Ref Role
       InstanceType:
         Ref: InstanceTypeParameter
-      ImageId: !FindInMap [AmazonLinuxAMI2017030, !Ref "AWS::Region", ami]
+      ImageId: !FindInMap [AmazonLinuxAMI, !Ref "AWS::Region", ami]
       KeyName: !Ref SSHKey
       InstanceInitiatedShutdownBehavior: stop
       Tags:
