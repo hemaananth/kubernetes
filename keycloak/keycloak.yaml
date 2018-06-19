@@ -1,0 +1,120 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: keycloak-demo
+  name: keycloak-demo
+  namespace: poc
+  #annotations:
+    #sidecar.istio.io/inject: "false"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: keycloak-demo
+      version: v3.4.3
+  template:
+    metadata:
+      labels:
+        app: keycloak-demo
+        version: v3.4.3
+    spec:
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      containers:
+      - name: keycloak-demo
+        image: jboss/keycloak:3.4.3.Final
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 200m
+            memory: 1024Mi
+        ports:
+        - containerPort: 8443
+        env:
+        - name: KEYCLOAK_USER
+          value: admin
+        - name: KEYCLOAK_PASSWORD
+          value: admin
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-demo-congif
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-demo-congif
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_PORT_5432_TCP_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-demo-congif
+              key: POSTGRES_ADDR
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-demo-congif
+              key: POSTGRES_DB
+        - name: POSTGRES_PORT_5432_TCP_PORT
+          value: "5432"
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-demo-congif
+              key: POSTGRES_PORT
+        - name: POSTGRES_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-demo-congif
+              key: POSTGRES_ADDR
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-demo
+  namespace: poc
+  #annotations:
+    #service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:<cert>
+    #service.beta.kubernetes.io/aws-load-balancer-backend-protocol: https
+    #service.beta.kubernetes.io/aws-load-balancer-ssl-ports: https
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  type: LoadBalancer
+  selector:
+    app: keycloak-demo
+  sessionAffinity: None
+  loadBalancerSourceRanges:
+    - 10.0.0.8/16 #ip ranges to restrict
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-demo-headless
+  namespace: poc
+spec:
+  ports:
+  - name: https
+    port: 8443
+  type: ClusterIP
+  selector:
+    app: keycloak-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-demo-congif
+  namespace: poc
+data:
+  POSTGRES_USER: root
+  POSTGRES_PASSWORD: test1234
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: keycloak
+  KEYCLOAK_JDBC_URL: jdbc:postgresql://instanceid:5432/keycloak
+  POSTGRES_ADDR: instanceIP
